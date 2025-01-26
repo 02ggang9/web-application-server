@@ -1,0 +1,40 @@
+plugins {
+    id 'java'
+}
+
+group = 'org.nhnnext'
+version = '1.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation 'junit:junit:4.11'
+    implementation 'com.google.guava:guava:18.0'
+    implementation 'ch.qos.logback:logback-classic:1.1.2'
+}
+
+// JAR 이름을 바꾸고 싶다면(기본은 프로젝트명-버전)
+tasks.jar {
+    archiveBaseName = 'web-application-server'
+    // archiveVersion = '' // 버전 제거시
+}
+
+task copyDependencies(type: Copy) {
+    from configurations.runtimeClasspath
+    into "$buildDir/dependencies"
+}
+
+build {
+    dependsOn copyDependencies
+}
