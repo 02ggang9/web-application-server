@@ -1,7 +1,9 @@
 package webserver;
 
+import static webserver.http.HttpStatus.GET;
 import static webserver.http.HttpStatus.POST;
 
+import db.DataBase;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -63,13 +65,39 @@ public class RequestHandler extends Thread {
                 String userId = httpBody.value("userId");
                 String password = httpBody.value("password");
                 String name = httpBody.value("name");
+                String email = httpBody.value("email");
 
                 body = Files.readAllBytes(new File("./webapp" + "/index.html").toPath());
-                User user = new User(userId, password, name, "");
+                User user = new User(userId, password, name, email);
+                DataBase.addUser(user);
                 response302Header(dos, body.length);
                 responseBody(dos, body);
+            } else if (Objects.equals(requestLine.getUrl(), "/user/login.html")) {
+                body = Files.readAllBytes(new File("./webapp" + requestLine.getUrl()).toPath());
+                response200Header(dos, body.length);
+                responseBody(dos, body);
+            } else if (Objects.equals(requestLine.getUrl(), "/user/form.html") && requestLine.getMethod() == GET) {
+                body = Files.readAllBytes(new File("./webapp" + requestLine.getUrl()).toPath());
+                response200Header(dos, body.length);
+                responseBody(dos, body);
+            } else if (Objects.equals(requestLine.getUrl(), "/user/login") && requestLine.getMethod() == POST) {
+                boolean valid = false;
+                String userId = httpBody.value("userId");
+                String password = httpBody.value("password");
+
+                User findUserById = DataBase.findUserById(userId);
+                if (Objects.equals(findUserById.getPassword(), password)) {
+                    valid = true;
+                }
+
+                responseLogin(dos, valid);
+                responseBody(dos, new byte[0]);
             }
         } catch (IOException e) {
+            log.error(e.getMessage());
+        } catch (NullPointerException e) {
+            log.error(e.getMessage());
+        } catch (RuntimeException e) {
             log.error(e.getMessage());
         }
     }
@@ -79,6 +107,17 @@ public class RequestHandler extends Thread {
             dos.writeBytes("HTTP/1.1 302 Found \r\n");
             dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
             dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
+            dos.writeBytes("\r\n");
+        } catch (IOException e) {
+            log.error(e.getMessage());
+        }
+    }
+
+    private void responseLogin(DataOutputStream dos, boolean success) {
+        try {
+            dos.writeBytes("HTTP/1.1 200 OK \r\n");
+            dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
+            dos.writeBytes("Set-Cookie: " + (success ? "logined=true" : "logined=false"));
             dos.writeBytes("\r\n");
         } catch (IOException e) {
             log.error(e.getMessage());
@@ -105,8 +144,10 @@ public class RequestHandler extends Thread {
         }
     }
 
-    private RequestLine createRequestLine(BufferedReader bufferedReader) throws IOException {
-        String[] httpRequestLines = bufferedReader.readLine().split(" ");
+    private RequestLine createRequestLine(BufferedReader bufferedReader) throws IOException, RuntimeException {
+        String line = bufferedReader.readLine();
+        if (line == null) throw new RuntimeException();
+        String[] httpRequestLines = line.split(" ");
         String pathOrQuery = httpRequestLines[1];
         Map<String, String> queries = new HashMap<>();
 
@@ -141,6 +182,8 @@ public class RequestHandler extends Thread {
         StringBuilder httpHeaderBuilder = new StringBuilder();
         while(true) {
             String line = bufferedReader.readLine();
+
+            if (line == null) throw new RuntimeException();
             if (line.isEmpty()) {
                 httpHeaderBuilder.append("\n");
                 break;
