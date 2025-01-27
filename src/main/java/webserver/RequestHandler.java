@@ -48,7 +48,8 @@ public class RequestHandler extends Thread {
             HttpHeader httpHeader = createHttpHeader(bufferedReader);
             HttpBody httpBody = createHttpBody(
                 bufferedReader,
-                httpHeader.getValue("Content-Length") != null ? Integer.parseInt(httpHeader.getValue("Content-Length").trim()) : 0
+                httpHeader.getValue("Content-Length") != null ? Integer.parseInt(httpHeader.getValue("Content-Length")
+                    .trim()) : 0
             );
 
             DataOutputStream dos = new DataOutputStream(out);
@@ -63,9 +64,9 @@ public class RequestHandler extends Thread {
                 String password = httpBody.value("password");
                 String name = httpBody.value("name");
 
-                body = "Hello world".getBytes();
+                body = Files.readAllBytes(new File("./webapp" + "/index.html").toPath());
                 User user = new User(userId, password, name, "");
-                response200Header(dos, body.length);
+                response302Header(dos, body.length);
                 responseBody(dos, body);
             }
         } catch (IOException e) {
