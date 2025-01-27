@@ -63,7 +63,7 @@ public class RequestHandler extends Thread {
                 body = Files.readAllBytes(new File("./webapp" + defaultHttp.getHttpStartLine().getPath()).toPath());
             } else if (
                 Objects.equals(defaultHttp.getHttpStartLine().getPath(), "/user/create") &&
-                    Objects.equals(defaultHttp.getHttpStartLine().getMethod(), "GET")
+                    Objects.equals(defaultHttp.getHttpStartLine().getMethod(), "POST")
             ) {
                 String userId = defaultHttp.getHttpStartLine().getQueries().get("userId");
                 String password = defaultHttp.getHttpStartLine().getQueries().get("password");
