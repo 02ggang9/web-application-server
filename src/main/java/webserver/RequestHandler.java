@@ -13,9 +13,11 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import model.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import webserver.http.DefaultHttp;
 
 public class RequestHandler extends Thread {
     private static final Logger log = LoggerFactory.getLogger(RequestHandler.class);
@@ -36,41 +38,44 @@ public class RequestHandler extends Thread {
         try (InputStream in = connection.getInputStream(); OutputStream out = connection.getOutputStream()) {
             // TODO 사용자 요청에 대한 처리는 이 곳에 구현하면 된다.
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(in));
-            int count = 1;
-            while (true) {
-                String line = bufferedReader.readLine();
-                if (count == 1) {
-                    path = line.split(" ")[1];
-                }
+            StringBuilder httpHeaderBuilder = new StringBuilder();
 
-                System.out.println(line);
-                count++;
+            while(true) {
+                String line = bufferedReader.readLine();
+
                 if (line.isEmpty()) {
-                    count = 1;
+                    httpHeaderBuilder.append("\n");
                     break;
                 }
+
+                httpHeaderBuilder
+                    .append(line)
+                    .append("\n");
             }
 
-            // ====
+            String[] httpHeaders = httpHeaderBuilder.toString()
+                .split("\n");
 
-            String[] parameters = this.path.split("\\?")[1].split("&");
-            for (int i = 0; i < parameters.length; i++) {
-                String value = parameters[i].split("=")[1];
-                parameter.add(value);
-            }
-
-            User user = new User(
-                parameter.get(0),
-                parameter.get(1),
-                parameter.get(2),
-                parameter.get(3)
-            );
-
-
-
-            //
+            DefaultHttp defaultHttp = new DefaultHttp(httpHeaders);
             DataOutputStream dos = new DataOutputStream(out);
-            byte[] body = Files.readAllBytes(new File("./webapp" + path).toPath());
+            final byte[] body;
+            if (Objects.equals(defaultHttp.getHttpStartLine().getPath(), "/index.html")) {
+                body = Files.readAllBytes(new File("./webapp" + defaultHttp.getHttpStartLine().getPath()).toPath());
+            } else if (
+                Objects.equals(defaultHttp.getHttpStartLine().getPath(), "/user/create") &&
+                    Objects.equals(defaultHttp.getHttpStartLine().getMethod(), "GET")
+            ) {
+                String userId = defaultHttp.getHttpStartLine().getQueries().get("userId");
+                String password = defaultHttp.getHttpStartLine().getQueries().get("password");
+                String name = defaultHttp.getHttpStartLine().getQueries().get("name");
+
+                User user = new User(userId, password, name, null);
+                body = "Hello World".getBytes();
+                System.out.println("user = " + user);
+            } else {
+                body = "Hello World".getBytes();
+
+            }
             response200Header(dos, body.length);
             responseBody(dos, body);
         } catch (IOException e) {
